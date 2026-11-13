@@ -1,4 +1,4 @@
-const CACHE_NAME = "eda-selanik-v1";
+const CACHE_NAME = "eda-selanik-v2";
 const PRECACHE_URLS = ["./", "./index.html"];
 
 self.addEventListener("install", (event) => {
@@ -31,9 +31,15 @@ self.addEventListener("fetch", (event) => {
               cache.put(event.request, res.clone());
             }
             return res;
-          })
-          .catch(() => cached || cache.match("./index.html") || cache.match("./"));
-        return cached || net;
+          });
+
+        if (!cached) {
+          return net.catch(() => cache.match("./index.html") || cache.match("./"));
+        }
+
+        // Network-first with 2s timeout when cached exists so updates arrive quickly online, offline stays instant
+        const timeoutFallback = new Promise((resolve) => setTimeout(() => resolve(cached), 2000));
+        return Promise.race([net.catch(() => cached), timeoutFallback]);
       })
     )
   );
